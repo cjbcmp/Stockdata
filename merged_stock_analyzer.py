@@ -236,23 +236,5 @@ def download_stock_data(codes):
 
 # ======================= 主程序入口 =======================
 
-if __name__ == "__main__":
-    # 步骤1：获取低PE股票
-    pe_stock_codes, pe_filename = get_pe_stocks()
-    
-    # 如果成功获取到股票代码，则继续下一步
-    if pe_stock_codes:
-        # 步骤2：登录BaoStock并下载数据
-        lg = bs.login()
-        if lg.error_code != '0':
-            print(f"Baostock 登录失败: {lg.error_msg}")
-            sys.exit(1)
-        
-        try:
-            download_stock_data(pe_stock_codes)
-        finally:
-            bs.logout()
-            print("Baostock 已登出。")
-    
-    print("\n所有任务完成。")
+if __name__ == "__main__":    # 步骤1：登录BaoStock    lg = bs.login()    if lg.error_code != '0':        print(f"Baostock 登录失败: {lg.error_msg}")        sys.exit(1)    try:        # 步骤2：获取低PE股票        pe_stock_codes, pe_filename = get_pe_stocks()        # 如果成功获取到股票代码，则继续下一步        if pe_stock_codes:            # 步骤3：下载数据            download_stock_data(pe_stock_codes)    finally:        bs.logout()        print("Baostock 已登出。")    print("\n所有任务完成。")
 
