@@ -67,6 +67,7 @@ def get_pe_stocks():
 
     # 获取关键参数
     trade_date = get_real_trade_date()
+    print(f"Using trade date: {trade_date}") # Added this line
     all_codes = get_all_a_stock_codes()
 
     # 数据存储
@@ -86,10 +87,16 @@ def get_pe_stocks():
                 adjustflag="3")
 
             if rs.data and rs.data[0][0]:
-                pe_value = round(float(rs.data[0][0]), 2)
-                # 只保留0 < PE <= 30的数据
-                if 0 < pe_value <= 30:
-                    pe_data[code] = pe_value
+                try:
+                    pe_value = round(float(rs.data[0][0]), 2)
+                    if 0 < pe_value <= 30:
+                        pe_data[code] = pe_value
+                    else:
+                        print(f"Info: {code} PE {pe_value} is outside 0-30 range.")
+                except ValueError:
+                    print(f"Warning: Could not convert PE for {code}: {rs.data[0][0]}")
+            else:
+                print(f"Warning: No PE data found for {code} on {trade_date}.")
 
             # 进度显示
             if i % 600 == 0:
