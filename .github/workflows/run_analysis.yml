@@ -33,3 +33,4 @@ jobs:
         name: stock-analysis-results
         path: |
           *.xlsx
+        retention-days: 1
