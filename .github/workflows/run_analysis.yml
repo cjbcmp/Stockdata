@@ -3,8 +3,8 @@ name: Run Stock Analysis
 
 on:
   workflow_dispatch: # 允许手动触发
-  schedule:
-    - cron: '0 22 * * *' # 每天的22:00 UTC (北京时间早上6点)运行
+  # schedule:
+  #   - cron: '0 22 * * *' # 每天的22:00 UTC (北京时间早上6点)运行
 
 jobs:
   build-and-run:
