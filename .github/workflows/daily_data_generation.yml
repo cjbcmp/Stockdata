@@ -49,6 +49,17 @@ jobs:
         path: stock_kline_data.xlsx
         retention-days: 1 # 数据保留一天，避免占用过多空间
 
+    - name: Upload Data to Release for Manual Trigger
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: latest-data
+        files: stock_kline_data.xlsx
+        body: "Latest stock data for manual analysis runs."
+        prerelease: false
+        draft: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+        replaces_artifacts: true
+
     - name: Dispatch event to Passive-Analysis
       uses: peter-evans/repository-dispatch@v2
       with:
