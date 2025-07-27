@@ -1,0 +1,50 @@
+name: Daily Data Generation and Dispatch
+
+on:
+  schedule:
+    # 每天北京时间 18:00 运行 (UTC+8)
+    # 18:00 北京时间 = 10:00 UTC
+    - cron: '0 10 * * *'
+  workflow_dispatch: # 允许手动触发，方便测试
+
+jobs:
+  generate_data:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x' # 根据你的项目需求调整 Python 版本
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # 假设 requirements.txt 在仓库根目录
+        if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+        fi
+        # 如果 merged_stock_analyzer.py 有其他未在 requirements.txt 中的依赖，请在此处添加
+        pip install pandas openpyxl # 确保这些库已安装，因为它们通常用于处理 Excel
+
+    - name: Run data generation script
+      run: python merged_stock_analyzer.py
+      # 确保 merged_stock_analyzer.py 会在当前目录下生成 stock_kline_data.xlsx
+
+    - name: Upload stock_kline_data.xlsx as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: stock-kline-data
+        path: stock_kline_data.xlsx
+        retention-days: 1 # 数据保留一天，避免占用过多空间
+
+    - name: Dispatch event to Passive-Analysis
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.PAT_TOKEN }} # 使用你创建的 PAT
+        repository: cjbcmp/Passive-Analysis # 目标仓库
+        event-type: stockdata-update # 事件类型，Passive-Analysis 将监听此类型
+        client-payload: '{"repository": "${{ github.repository }}", "run_id": "${{ github.run_id }}"}'
