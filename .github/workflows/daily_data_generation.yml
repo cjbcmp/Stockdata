@@ -53,8 +53,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: latest-data
-        files: 
-          - stock_kline_data.xlsx
+        files: stock_kline_data.xlsx
         body: "Latest stock data for manual analysis runs."
         prerelease: false
         draft: false
