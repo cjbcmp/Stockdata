@@ -4,7 +4,7 @@ on:
   schedule:
     # 每天北京时间 18:00 运行 (UTC+8)
     # 18:00 北京时间 = 10:00 UTC
-    - cron: '0 10 * * *'
+    - cron: '0 10 * * 1-5' # 北京时间周一至周五 18:00 运行
   workflow_dispatch: # 允许手动触发，方便测试
 
 jobs:
@@ -39,6 +39,28 @@ jobs:
         fi
         # 如果 merged_stock_analyzer.py 有其他未在 requirements.txt 中的依赖，请在此处添加
         pip install pandas openpyxl # 确保这些库已安装，因为它们通常用于处理 Excel
+
+    - name: Check if today is a Chinese holiday
+      id: check_holiday
+      run: |
+        python -c "
+import datetime
+from chinesecalendar import is_holiday
+
+today = datetime.date.today()
+if is_holiday(today):
+    print('Today is a Chinese holiday. Skipping data generation.')
+    print('is_holiday=true')
+else:
+    print('Today is not a Chinese holiday. Proceeding with data generation.')
+    print('is_holiday=false')
+" >> $GITHUB_OUTPUT
+
+    - name: Skip if holiday
+      if: steps.check_holiday.outputs.is_holiday == 'true'
+      run: |
+        echo "Skipping data generation as today is a Chinese holiday."
+        exit 0
 
     - name: Run data generation script
       run: python merged_stock_analyzer.py
