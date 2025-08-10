@@ -40,7 +40,7 @@ jobs:
         # 如果 merged_stock_analyzer.py 有其他未在 requirements.txt 中的依赖，请在此处添加
         pip install pandas openpyxl # 确保这些库已安装，因为它们通常用于处理 Excel
 
-        - name: Check if today is a Chinese holiday
+            - name: Check if today is a Chinese holiday
       id: check_holiday
       run: |
         python - <<EOF >> $GITHUB_OUTPUT
