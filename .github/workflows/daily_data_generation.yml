@@ -42,11 +42,7 @@ jobs:
 
                 
 
-    - name: Skip if holiday
-      if: steps.check_holiday.outputs.is_holiday == 'true'
-      run: |
-        echo "Skipping data generation as today is a Chinese holiday."
-        exit 0
+    
 
     - name: Run data generation script
       run: python merged_stock_analyzer.py
