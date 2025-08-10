@@ -40,21 +40,21 @@ jobs:
         # 如果 merged_stock_analyzer.py 有其他未在 requirements.txt 中的依赖，请在此处添加
         pip install pandas openpyxl # 确保这些库已安装，因为它们通常用于处理 Excel
 
-            - name: Check if today is a Chinese holiday
+                - name: Check if today is a Chinese holiday
       id: check_holiday
       run: |
-        python - <<EOF >> $GITHUB_OUTPUT
-import datetime
-from chinesecalendar import is_holiday
-
-today = datetime.date.today()
-if is_holiday(today):
-    print('Today is a Chinese holiday. Skipping data generation.')
-    print('is_holiday=true')
-else:
-    print('Today is not a Chinese holiday. Proceeding with data generation.')
-    print('is_holiday=false')
-EOF
+        echo "import datetime" > check_holiday.py
+        echo "from chinesecalendar import is_holiday" >> check_holiday.py
+        echo "" >> check_holiday.py
+        echo "today = datetime.date.today()" >> check_holiday.py
+        echo "if is_holiday(today):" >> check_holiday.py
+        echo "    print('Today is a Chinese holiday. Skipping data generation.')" >> check_holiday.py
+        echo "    print('is_holiday=true')" >> check_holiday.py
+        echo "else:" >> check_holiday.py
+        echo "    print('Today is not a Chinese holiday. Proceeding with data generation.')" >> check_holiday.py
+        echo "    print('is_holiday=false')" >> check_holiday.py
+        
+        python check_holiday.py >> $GITHUB_OUTPUT
 
     - name: Skip if holiday
       if: steps.check_holiday.outputs.is_holiday == 'true'
