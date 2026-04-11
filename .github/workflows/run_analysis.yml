@@ -1,10 +1,9 @@
-
 name: Run Stock Analysis
 
 on:
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch: # ??????
   schedule:
-    - cron: '0 22 * * 1-5' # 北京时间周一至周五早上6点运行
+    - cron: '0 22 * * 1-5' # ???????????6???
 
 jobs:
   build-and-run:
@@ -17,48 +16,33 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10' # 使用Python 3.10
-
-    - name: Cache Python dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        python-version: '3.10'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt chinese-calendar; fi
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python -m pip install chinese-calendar pandas openpyxl baostock
 
     - name: Check if today is a Chinese holiday
-      id: check_holiday
+      id: check_h
       run: |
         python -c "
-import datetime
-from chinesecalendar import is_holiday
-
-today = datetime.date.today()
-if is_holiday(today):
-    print('Today is a Chinese holiday. Skipping analysis.')
-    print('is_holiday=true')
-else:
-    print('Today is not a Chinese holiday. Proceeding with analysis.')
-    print('is_holiday=false')
-" >> $GITHUB_OUTPUT
-
-    - name: Skip if holiday
-      if: steps.check_holiday.outputs.is_holiday == 'true'
-      run: |
-        echo "Skipping analysis as today is a Chinese holiday."
-        exit 0
+        import datetime, os
+        from chinese_calendar import is_holiday
+        today = datetime.date.today()
+        is_h = is_holiday(today)
+        print(f'Today is a Chinese holiday: {is_h}')
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f'is_holiday={str(is_h).lower()}\n')
+        "
 
     - name: Run script
+      if: steps.check_h.outputs.is_holiday == 'false'
       run: python merged_stock_analyzer.py
 
     - name: Upload results
+      if: steps.check_h.outputs.is_holiday == 'false'
       uses: actions/upload-artifact@v4
       with:
         name: stock-analysis-results
