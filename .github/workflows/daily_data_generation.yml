@@ -2,51 +2,103 @@ name: Daily Data Generation and Dispatch
 
 on:
   schedule:
-    - cron: '0 10 * * 1-5'
+    # UTC 10:00 = 北京时间 18:00（baostock 数据生成时间）
+    - cron: '0 10 * * 1-5
   workflow_dispatch:
+
+# 防止并发运行：调度触发 + 手动触发互相排队
+concurrency:
+  group: daily-data-generation
+  cancel-in-progress: false
 
 jobs:
   generate_data:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write           # 用于失败时创建 Issue 通知
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # 安全最佳实践
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'                 # 启用 pip 缓存加速
+          cache-dependency-path: requirements.txt
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install pandas openpyxl baostock
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
-    - name: Run data generation script
-      run: python merged_stock_analyzer.py
+      - name: Run data generation script
+        id: script
+        run: python merged_stock_analyzer.py
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: stock-kline-data
-        path: stock_kline_data.xlsx
-        retention-days: 2
+      - name: Upload Kline Data Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-kline-data
+          path: stock_kline_data.xlsx
+          if-no-files-found: error     # 文件不存在则报错
+          retention-days: 7            # 保留 7 天
 
-    - name: Upload Data to Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: latest-data
-        files: stock_kline_data.xlsx
-        token: ${{ secrets.GITHUB_TOKEN }}
-        make_latest: true
+      - name: Upload PE Data Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pe-selected-stocks
+          path: pe_selected_stocks.xlsx
+          if-no-files-found: warn
+          retention-days: 7
 
-    - name: Dispatch Passive-Analysis
-      uses: peter-evans/repository-dispatch@v3
-      with:
-        token: ${{ secrets.PAT_TOKEN }}
-        repository: cjbcmp/Passive-Analysis
-        event-type: stockdata-update
-        client-payload: '{"run_id": "${{ github.run_id }}"}'
+      - name: Upload Data to Release
+        uses: softprops/action-gh-release@v3    # 升级到 v3（Node 24）
+        with:
+          tag_name: daily-data-${{ github.run_id }}
+          name: "Daily Data Run #${{ github.run_id }}"
+          body: |
+            Automated daily stock data update.
+            - Run ID: ${{ github.run_id }}
+            - Date: ${{ github.event.repository.updated_at }}
+          files: |
+            stock_kline_data.xlsx
+            pe_selected_stocks.xlsx
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_unmatched_files: true
+
+      - name: Dispatch Passive-Analysis
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          repository: cjbcmp/Passive-Analysis
+          event-type: stockdata-update
+          client-payload: |
+            {
+              "run_id": "${{ github.run_id }}",
+              "tag": "daily-data-${{ github.run_id }}",
+              "status": "success"
+            }
+
+      - name: Notify failure via Issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = '${{ github.run_id }}';
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `❌ 数据生成工作流失败 - Run #${runId}`,
+              body: `## 工作流执行失败\n\n` +
+                    `🚨 **Daily Data Generation and Dispatch** 运行失败！\n\n` +
+                    `- **Run ID**: ${runId}\n` +
+                    `- **触发时间**: ${new Date().toISOString()}\n` +
+                    `- **查看日志**: ${runUrl}\n\n` +
+                    `请检查日志并修复问题。`
+            });
