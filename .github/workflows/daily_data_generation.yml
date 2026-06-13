@@ -57,7 +57,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Data to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: daily-data-${{ github.run_id }}
           name: "Daily Data Run #${{ github.run_id }}"
